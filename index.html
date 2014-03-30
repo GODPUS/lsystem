@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            * {
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: -moz-none;
+                -ms-user-select: none;
+                user-select: none;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #222;
+                height: 100%;
+                overflow: hidden;
+            }
+
+            #canvases {
+                position: absolute;
+
+            }
+
+            canvas {
+                position: absolute;
+                top: 0px;
+                left: 0px;
+                background-color: transparent;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas"></canvas>
+        <script src="vendor/parallel.js"></script>
+        <script src="lsystem.js"></script>
+        <script src="main.js"></script>
+    </body>
+</html>
