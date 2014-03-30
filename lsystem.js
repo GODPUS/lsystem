@@ -6,6 +6,7 @@ window.LSystem = function(iterations)
     this.iterations = iterations;
     this.currentIteration = 0;
     this.keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    this.parallel = new Parallel();
 }
 
 LSystem.prototype.generateRandomAxiomAndRules = function(axiomMinSize, axiomMaxSize, rulesMinSize, rulesMaxSize){
@@ -32,17 +33,56 @@ LSystem.prototype.generateRandomAxiomAndRules = function(axiomMinSize, axiomMaxS
 
 LSystem.prototype.generate = function() {
     var newString = ''; 
+    var numWorkers = 8;
+    var chunkedStringArray = [];
 
-    for(var i = 0; i < this.string.length; i++)
+    var i;
+
+    //split string for workers
+    for(i = 1; i <= numWorkers; i++)
     {
-        newString += this.rules[this.string.charAt(i)];
+        var divider = Math.ceil(this.string.length/numWorkers);
+        var s;
+
+        if(i == 0) {
+            s = this.string.slice(0, divider*1);
+        }else if(i === numWorkers){
+            s = this.string.slice(divider*(numWorkers-1));
+        }else{
+            s = this.string.slice(divider*(i-1), divider*i);
+        }
+
+        chunkedStringArray.push(s+'|'+JSON.stringify(this.rules)); //stringify rules into webworker
     }
 
-    this.string = newString;
+    this.parallel.options.maxWorkers = numWorkers;
+    this.parallel.data = chunkedStringArray;
+    var that = this;
 
-    if(this.currentIteration < this.iterations)
+    this.parallel.map(this.workerMap).then(function(){
+        that.string = that.parallel.data.join('');
+        console.log('STRING #'+that.currentIteration, that.string);
+
+        if(that.currentIteration < that.iterations)
+        {
+            that.currentIteration++;
+            that.generate();
+        }else{
+            console.log('TRIGGER COMPLETE')
+            $(that).trigger('COMPLETE');
+        }
+    });
+}
+
+LSystem.prototype.workerMap = function(string) {
+    var rules = JSON.parse(string.split('|')[1]);
+    string = string.split('|')[0];
+    var newString = '';
+
+    for(var i = 0; i < string.length; i++)
     {
-        this.currentIteration++;
-        this.generate();
+        newString += rules[string.charAt(i)];
     }
+
+    return newString;
 }
