@@ -6,6 +6,7 @@ window.LSystem = function(iterations)
     this.iterations = iterations;
     this.currentIteration = 0;
     this.keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    this.parallel = new Parallel();
 }
 
 LSystem.prototype.generateRandomAxiomAndRules = function(axiomMinSize, axiomMaxSize, rulesMinSize, rulesMaxSize){
@@ -31,24 +32,53 @@ LSystem.prototype.generateRandomAxiomAndRules = function(axiomMinSize, axiomMaxS
 }
 
 LSystem.prototype.generate = function() {
-    var newString = '';
+    var numWorkers = 8;
+    var chunkedStringArray = [];
 
-    var regex = new RegExp(Object.keys(this.rules).join("|"),"gi");
+    //split string for workers
+    for(var i = 1; i <= numWorkers; i++)
+    {
+        var divider = Math.ceil(this.string.length/numWorkers);
+        var s;
+
+        if(i == 0) {
+            s = this.string.slice(0, divider*1);
+        }else if(i === numWorkers){
+            s = this.string.slice(divider*(numWorkers-1));
+        }else{
+            s = this.string.slice(divider*(i-1), divider*i);
+        }
+
+        chunkedStringArray.push({string: s, rules: this.rules}); //stringify rules into webworker
+    }
+
+    this.parallel.options.maxWorkers = numWorkers;
+    this.parallel.data = chunkedStringArray;
     var that = this;
 
-    console.log(this.string.length);
+    this.parallel.map(this.workerMap).then(function(){
+        that.string = that.parallel.data.join('');
+
+        if(that.currentIteration < that.iterations)
+        {
+            that.currentIteration++;
+            that.generate();
+        }else{
+            console.log('TRIGGER COMPLETE')
+            $(that).trigger('COMPLETE');
+        }
+    });
+}
+
+LSystem.prototype.workerMap = function(data) {
+    var newString = '';
+    var regex = new RegExp(Object.keys(data.rules).join("|"),"gi");
+    var that = this;
+
     //most elegant and fastest way of looping through string
-    newString = this.string.replace(regex, function(matched){
-        return that.rules[matched];
+    newString = data.string.replace(regex, function(matched){
+        return data.rules[matched];
     });
 
-    this.string = newString;
-
-    delete newString;
-
-    if(this.currentIteration < that.iterations)
-    {
-        this.currentIteration++;
-        this.generate();
-    }
+    return newString;
 }
